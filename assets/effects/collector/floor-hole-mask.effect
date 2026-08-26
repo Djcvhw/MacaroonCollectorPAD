@@ -1,0 +1,42 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: floor-hole-vs:vert
+      frag: floor-hole-fs:frag
+      properties:
+        mainTexture:      { value: white, editor: { type: texture } }
+        mainColor:        { value: [1.0, 1.0, 1.0, 1.0], editor: { type: color } }
+        holeCenterRadius: { value: [0.0, 0.0, 0.0, 1.0], target: holeCenterRadius }
+}%
+
+CCProgram floor-hole-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <builtin/uniforms/cc-local>
+  in vec3 a_position;
+  in vec2 a_texCoord;
+  out vec2 v_uv;
+  out vec3 v_worldPosition;
+  vec4 vert () {
+    vec4 worldPosition = cc_matWorld * vec4(a_position, 1.0);
+    v_worldPosition = worldPosition.xyz;
+    v_uv = a_texCoord;
+    return cc_matViewProj * worldPosition;
+  }
+}%
+
+CCProgram floor-hole-fs %{
+  precision highp float;
+  in vec2 v_uv;
+  in vec3 v_worldPosition;
+  uniform sampler2D mainTexture;
+  uniform Constant {
+    vec4 mainColor;
+    vec4 holeCenterRadius;
+  };
+  vec4 frag () {
+    float distanceToHole = distance(v_worldPosition.xz, holeCenterRadius.xz);
+    if (distanceToHole < holeCenterRadius.w) discard;
+    return texture(mainTexture, v_uv) * mainColor;
+  }
+}%

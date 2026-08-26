@@ -1,0 +1,381 @@
+{
+  "ver": "2.3.13",
+  "importer": "gltf",
+  "imported": true,
+  "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181",
+  "files": [],
+  "subMetas": {
+    "174be": {
+      "importer": "gltf-mesh",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@174be",
+      "displayName": "",
+      "id": "174be",
+      "name": "HoleBottom.004.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 64
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "40b6e": {
+      "importer": "gltf-mesh",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@40b6e",
+      "displayName": "",
+      "id": "40b6e",
+      "name": "HoleInnerWalls.004.mesh",
+      "userData": {
+        "gltfIndex": 1,
+        "triangleCount": 128
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "fd62f": {
+      "importer": "gltf-mesh",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@fd62f",
+      "displayName": "",
+      "id": "fd62f",
+      "name": "HoleRim.004.mesh",
+      "userData": {
+        "gltfIndex": 2,
+        "triangleCount": 512
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "ed689": {
+      "importer": "gltf-material",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@ed689",
+      "displayName": "",
+      "id": "ed689",
+      "name": "Hole Bottom.004.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "a982e": {
+      "importer": "gltf-material",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@a982e",
+      "displayName": "",
+      "id": "a982e",
+      "name": "Hole Inner Wall.004.material",
+      "userData": {
+        "gltfIndex": 1
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c5f90": {
+      "importer": "gltf-material",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@c5f90",
+      "displayName": "",
+      "id": "c5f90",
+      "name": "Hole Rim.004.material",
+      "userData": {
+        "gltfIndex": 2
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f5011": {
+      "importer": "gltf-scene",
+      "uuid": "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@f5011",
+      "displayName": "",
+      "id": "f5011",
+      "name": "hole.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    },
+    "assetFinder": {
+      "meshes": [
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@174be",
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@40b6e",
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@fd62f"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@ed689",
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@a982e",
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@c5f90"
+      ],
+      "scenes": [
+        "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@f5011"
+      ]
+    },
+    "materials": {
+      "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@a982e": {
+        "__type__": "cc.Material",
+        "_name": "",
+        "_objFlags": 0,
+        "__editorExtras__": {},
+        "_native": "",
+        "_effectAsset": {
+          "__uuid__": "c8f66d17-351a-48da-a12c-0212d28575c4",
+          "__expectedType__": "cc.EffectAsset"
+        },
+        "_techIdx": 0,
+        "_defines": [
+          {},
+          {},
+          {},
+          {},
+          {},
+          {}
+        ],
+        "_states": [
+          {
+            "rasterizerState": {
+              "cullMode": 0
+            },
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          }
+        ],
+        "_props": [
+          {
+            "mainColor": {
+              "__type__": "cc.Color",
+              "r": 136,
+              "g": 136,
+              "b": 136,
+              "a": 255
+            },
+            "albedoScale": {
+              "__type__": "cc.Vec3",
+              "x": 0.5299999713897705,
+              "y": 0.5299999713897705,
+              "z": 0.5299999713897705
+            },
+            "emissive": {
+              "__type__": "cc.Color",
+              "r": 136,
+              "g": 136,
+              "b": 136,
+              "a": 255
+            }
+          },
+          {},
+          {},
+          {},
+          {},
+          {}
+        ]
+      },
+      "8c0e1ef6-e9a6-4934-a7c7-135cae9f7181@c5f90": {
+        "__type__": "cc.Material",
+        "_name": "",
+        "_objFlags": 0,
+        "__editorExtras__": {},
+        "_native": "",
+        "_effectAsset": {
+          "__uuid__": "c8f66d17-351a-48da-a12c-0212d28575c4",
+          "__expectedType__": "cc.EffectAsset"
+        },
+        "_techIdx": 0,
+        "_defines": [
+          {},
+          {},
+          {},
+          {},
+          {},
+          {}
+        ],
+        "_states": [
+          {
+            "rasterizerState": {
+              "cullMode": 0
+            },
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          },
+          {
+            "rasterizerState": {},
+            "depthStencilState": {},
+            "blendState": {
+              "targets": [
+                {}
+              ]
+            }
+          }
+        ],
+        "_props": [
+          {
+            "mainColor": {
+              "__type__": "cc.Color",
+              "r": 208,
+              "g": 208,
+              "b": 208,
+              "a": 255
+            },
+            "albedoScale": {
+              "__type__": "cc.Vec3",
+              "x": 0.7799999713897705,
+              "y": 0.7799999713897705,
+              "z": 0.7799999713897705
+            },
+            "emissive": {
+              "__type__": "cc.Color",
+              "r": 96,
+              "g": 96,
+              "b": 96,
+              "a": 255
+            }
+          },
+          {},
+          {},
+          {},
+          {},
+          {}
+        ]
+      }
+    }
+  }
+}

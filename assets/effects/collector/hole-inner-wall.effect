@@ -1,0 +1,39 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: hole-inner-wall-vs:vert
+      frag: hole-inner-wall-fs:frag
+      rasterizerState:
+        cullMode: none
+      properties:
+        topColor:    { value: [0.784, 0.784, 0.784, 1.0], target: topColor, editor: { type: color } }
+        bottomColor: { value: [0.533, 0.533, 0.533, 1.0], target: bottomColor, editor: { type: color } }
+        depth:       { value: 1.3, target: holeParams.x }
+}%
+
+CCProgram hole-inner-wall-vs %{
+  precision highp float;
+  #include <builtin/uniforms/cc-global>
+  #include <builtin/uniforms/cc-local>
+  in vec3 a_position;
+  out float v_height;
+  vec4 vert () {
+    v_height = a_position.y;
+    return cc_matViewProj * cc_matWorld * vec4(a_position, 1.0);
+  }
+}%
+
+CCProgram hole-inner-wall-fs %{
+  precision highp float;
+  in float v_height;
+  uniform Constant {
+    vec4 topColor;
+    vec4 bottomColor;
+    vec4 holeParams;
+  };
+  vec4 frag () {
+    float depth = holeParams.x;
+    float t = smoothstep(0.0, 1.0, (v_height + depth * 0.5) / depth);
+    return vec4(mix(bottomColor.rgb, topColor.rgb, t), 1.0);
+  }
+}%
