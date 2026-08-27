@@ -9,6 +9,10 @@ export class CollectibleItem extends Component {
   /** Matches macaroon.glb: diameter is about 1.0 world unit. */
   @property public colliderRadius = 0.49;
   @property public colliderHeight = 0.67;
+  @property public absorbDuration = 0.32;
+  @property public absorbArcHeight = 0.7;
+  @property public absorbSideOffset = 0.35;
+  @property public absorbSpinDegrees = 260;
   private _collected = false;
   private _absorbing = false;
   private _collectionEnabled = true;
@@ -51,9 +55,34 @@ export class CollectibleItem extends Component {
     collectorEvents.emit(CollectorEvent.MacaroonFallStarted, this);
     this._body.type = RigidBody.Type.KINEMATIC;
     const start = this.node.worldPosition.clone();
+    const control = Vec3.lerp(new Vec3(), start, target, 0.5);
+    control.y += this.absorbArcHeight;
+    const inward = Vec3.subtract(new Vec3(), target, start);
+    inward.y = 0;
+    if (inward.lengthSqr() > 0.0001) inward.normalize();
+    const sideSign = Math.random() < 0.5 ? -1 : 1;
+    control.x += -inward.z * this.absorbSideOffset * sideSign;
+    control.z += inward.x * this.absorbSideOffset * sideSign;
+    const startEuler = this.node.eulerAngles.clone();
+    const spinX = (0.65 + Math.random() * 0.7) * this.absorbSpinDegrees * sideSign;
+    const spinZ = (0.65 + Math.random() * 0.7) * this.absorbSpinDegrees * -sideSign;
     const state = { value: 0 };
-    tween(state).to(0.22, { value: 1 }, {
-      onUpdate: () => this.node.setWorldPosition(Vec3.lerp(new Vec3(), start, target, state.value)),
+    tween(state).to(this.absorbDuration, { value: 1 }, {
+      easing: 'quadIn',
+      onUpdate: () => {
+        const t = state.value;
+        const oneMinusT = 1 - t;
+        this.node.setWorldPosition(
+          start.x * oneMinusT * oneMinusT + control.x * 2 * oneMinusT * t + target.x * t * t,
+          start.y * oneMinusT * oneMinusT + control.y * 2 * oneMinusT * t + target.y * t * t,
+          start.z * oneMinusT * oneMinusT + control.z * 2 * oneMinusT * t + target.z * t * t,
+        );
+        this.node.setRotationFromEuler(
+          startEuler.x + spinX * t,
+          startEuler.y + this.absorbSpinDegrees * 0.35 * t,
+          startEuler.z + spinZ * t,
+        );
+      },
     }).call(() => this.collect()).start();
   }
 
