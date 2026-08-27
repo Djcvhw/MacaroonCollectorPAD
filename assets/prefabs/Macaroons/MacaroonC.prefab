@@ -284,7 +284,11 @@
     "_enabled": true,
     "__prefab": null,
     "stageIndex": 0,
-    "colliderRadius": 0.49,
-    "colliderHeight": 0.67
+    "colliderSize": {
+      "__type__": "cc.Vec3",
+      "x": 0.82,
+      "y": 0.55,
+      "z": 0.82
+    }
   }
 ]

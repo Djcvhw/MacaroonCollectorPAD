@@ -22,7 +22,7 @@ export class FloorHoleMask extends Component {
   @property
   public edgePadding = 0.02;
 
-  private _instances: Material[] = [];
+  private _runtimeMaterial: Material | null = null;
   private _physicalHole: PhysicalHoleFloor | null = null;
   private _initialPhysicalRadius = 1;
 
@@ -32,17 +32,15 @@ export class FloorHoleMask extends Component {
     this._physicalHole = this.hole.getComponent(PhysicalHoleFloor);
     this._initialPhysicalRadius = this._physicalHole?.holeRadius ?? 1;
 
+    this._runtimeMaterial = new Material();
+    this._runtimeMaterial.copy(this.floorMaskMaterial);
     this.node.getComponentsInChildren(MeshRenderer).forEach((renderer) => {
-      // In Creator 3.8.4 MaterialInstance is internal. The renderer is the
-      // supported factory for an independent instance per floor renderer.
-      renderer.setSharedMaterial(this.floorMaskMaterial!, 0);
-      const instance = renderer.getMaterialInstance(0);
-      if (instance) this._instances.push(instance);
+      renderer.setSharedMaterial(this._runtimeMaterial!, 0);
     });
   }
 
   public lateUpdate(): void {
-    if (!this.hole || this._instances.length === 0) return;
+    if (!this.hole || !this._runtimeMaterial) return;
     const position = this.hole.worldPosition;
     // Hole itself stays at scale 1 so movement and collision bounds do not
     // inherit presentation scale. The mask must therefore follow the same
@@ -51,6 +49,6 @@ export class FloorHoleMask extends Component {
       ? this._physicalHole.holeRadius / this._initialPhysicalRadius
       : this.hole.worldScale.x;
     holeCenterRadius.set(position.x, position.y, position.z, this.holeRadius * growthScale + this.edgePadding);
-    this._instances.forEach((instance) => instance.setProperty('holeCenterRadius', holeCenterRadius));
+    this._runtimeMaterial.setProperty('holeCenterRadius', holeCenterRadius);
   }
 }

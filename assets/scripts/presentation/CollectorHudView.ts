@@ -3,6 +3,7 @@ import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 import { gameEventTarget } from '../plugins/GameEventTarget';
 import { GameEvent } from '../enums/GameEvent';
 import { CollectibleItem } from '../gameplay/CollectibleItem';
+import { TransformAdapter } from '../plugins/TransformAdapter';
 
 const { ccclass, property } = _decorator;
 
@@ -599,7 +600,17 @@ export class CollectorHudView extends Component {
       console.error('[CollectorHudView] Cannot show end screen: End Screen, End Screen Opacity, or End Card Art is not assigned.');
       return;
     }
+    const endCardAdapter = this.endCardArt.getComponent(TransformAdapter);
+    if (!endCardAdapter) {
+      console.error('[CollectorHudView] Cannot show end screen: End Card Art has no TransformAdapter.');
+      return;
+    }
     this.endScreen.active = true;
+    // EndScreen is inactive during gameplay, therefore its child adapter has
+    // not applied the current orientation yet. Apply it before capturing the
+    // animation target scale, otherwise the tween restores the authored scale
+    // and overwrites the landscape adaptation until the next resize.
+    endCardAdapter.onTransformEvent();
     this.endScreenOpacity.opacity = 0;
     tween(this.endScreenOpacity).to(0.3, { opacity: 255 }).start();
     const art = this.endCardArt;
