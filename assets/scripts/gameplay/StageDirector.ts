@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3 } from 'cc';
+import { _decorator, Component, Node } from 'cc';
 import { CollectorLevelConfig } from '../config/CollectorLevelConfig';
 import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 import { HoleController } from './HoleController';
@@ -6,7 +6,6 @@ import { CollectibleItem } from './CollectibleItem';
 import { GateController } from './GateController';
 
 const { ccclass, property } = _decorator;
-const holePosition = new Vec3();
 
 @ccclass('StageDirector')
 export class StageDirector extends Component {
@@ -21,6 +20,7 @@ export class StageDirector extends Component {
   private _items: CollectibleItem[][] = [];
 
   public initialize(config: CollectorLevelConfig, hole: HoleController): void {
+    collectorEvents.off(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
     this._config = config;
     this._hole = hole;
     this._items = this.stageRoots.map((root, index) => {
@@ -28,34 +28,30 @@ export class StageDirector extends Component {
       items.forEach((item) => item.stageIndex = index);
       return items;
     });
-  }
-
-  public update(): void {
-    if (!this._config || !this._hole) return;
-    const items = this._items[this._stageIndex] ?? [];
-    holePosition.set(this._hole.node.worldPosition);
-    const radiusSq = this._hole.collectionRadius * this._hole.collectionRadius;
-    for (const item of items) {
-      if (item.isCollected || !item.node.activeInHierarchy) continue;
-      const deltaX = item.node.worldPosition.x - holePosition.x;
-      const deltaZ = item.node.worldPosition.z - holePosition.z;
-      if (deltaX * deltaX + deltaZ * deltaZ > radiusSq) continue;
-      item.beginAbsorb(holePosition);
-      this._collected++;
-      collectorEvents.emit(CollectorEvent.ItemCollected, this._stageIndex, this._collected, this._config.stageTargets[this._stageIndex]);
-      if (this._collected >= this._config.stageTargets[this._stageIndex]) {
-        this.completeStage();
-        return;
-      }
-    }
+    collectorEvents.on(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
+    this.updateCollectionEligibility();
   }
 
   public reset(): void {
     this._stageIndex = 0;
     this._collected = 0;
-    this.stageRoots.forEach((root, index) => root.active = index === 0);
+    // All sections stay visible from the first frame. Collection is still
+    // restricted to _stageIndex in update(), so a closed gate determines access.
+    this.stageRoots.forEach((root) => root.active = true);
     this._items.forEach((items) => items.forEach((item) => item.reset()));
     this.gates.forEach((gate) => gate.reset());
+    this.updateCollectionEligibility();
+  }
+
+  public onDestroy(): void {
+    collectorEvents.off(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
+  }
+
+  private onPhysicalItemCollected(item: CollectibleItem): void {
+    if (!this._config || item.stageIndex !== this._stageIndex) return;
+    this._collected++;
+    collectorEvents.emit(CollectorEvent.ItemCollected, this._stageIndex, this._collected, this._config.stageTargets[this._stageIndex]);
+    if (this._collected >= this._config.stageTargets[this._stageIndex]) this.completeStage();
   }
 
   private completeStage(): void {
@@ -66,7 +62,11 @@ export class StageDirector extends Component {
     this.gates[completed]?.open();
     this._stageIndex++;
     this._collected = 0;
+    this.updateCollectionEligibility();
     if (this._stageIndex >= this._config.stageTargets.length) return;
-    this.stageRoots[this._stageIndex].active = true;
+  }
+
+  private updateCollectionEligibility(): void {
+    this._items.forEach((items, index) => items.forEach((item) => item.setCollectionEnabled(index === this._stageIndex)));
   }
 }

@@ -1,4 +1,4 @@
-import { _decorator, Component } from 'cc';
+import { _decorator, CCFloat, Component } from 'cc';
 
 const { ccclass, property } = _decorator;
 
@@ -8,13 +8,13 @@ export class CollectorLevelConfig extends Component {
   @property({ tooltip: 'Seconds available after the first player drag.' })
   public durationSeconds = 90;
 
-  @property({ type: [Number], tooltip: 'Required collected items per stage.' })
+  @property({ type: [CCFloat], tooltip: 'Required collected items per stage.' })
   public stageTargets = [150, 250, 300, 400];
 
-  @property({ type: [Number], tooltip: 'Hole scale at the end of every stage.' })
+  @property({ type: [CCFloat], tooltip: 'Hole scale at the end of every stage.' })
   public stageHoleScales = [1.5, 2.2, 2.8, 3.5];
 
-  @property({ type: [Number], tooltip: 'Camera zoom multiplier per stage.' })
+  @property({ type: [CCFloat], tooltip: 'Camera zoom multiplier per stage.' })
   public stageCameraZooms = [1, 1.2, 1.45, 1.75];
 
   @property
@@ -26,7 +26,7 @@ export class CollectorLevelConfig extends Component {
   @property
   public laneWidth = 12;
 
-  @property({ type: [Number] })
+  @property({ type: [CCFloat] })
   public gatePositions = [20, 52, 92, 140];
 
   public validate(): void {

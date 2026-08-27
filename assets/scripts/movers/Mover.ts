@@ -2,6 +2,8 @@ import { _decorator, Component, Node, v3, Vec2, Vec3, CameraComponent, Quat } fr
 import { gameEventTarget } from '../plugins/GameEventTarget';
 import { GameEvent } from '../enums/GameEvent';
 import { MoverEvent } from './MoverEvent';
+import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
+import { PhysicalHoleFloor } from '../gameplay/PhysicalHoleFloor';
 
 const { ccclass, property } = _decorator;
 
@@ -16,6 +18,21 @@ export class Mover extends Component {
 	@property
 	interRadius: number = 3;
 
+	/** Visual mesh of the hole. Assign Hole/VisualRoot in the Inspector. */
+	@property(Node)
+	visualRoot: Node | null = null;
+
+	/** Physical floor with the moving cut-out. Assign the component on Hole. */
+	@property(PhysicalHoleFloor)
+	physicalHoleFloor: PhysicalHoleFloor | null = null;
+
+	@property
+	growthEvery: number = 45;
+
+	/** Added to the initial scale after each growth threshold. */
+	@property
+	growthStep: number = 0.1;
+
 	/** Keep this enabled for ground-bound objects such as the collector hole. */
 	@property
 	lockWorldY: boolean = false;
@@ -23,6 +40,7 @@ export class Mover extends Component {
 	/** Characters can face their direction of travel; a hole must remain unrotated. */
 	@property
 	rotateWithMovement: boolean = true;
+
 
 	private _cameraNode: Node = null;
 	private _isCameraUnfocused = false;
@@ -34,6 +52,20 @@ export class Mover extends Component {
 
 	private _isInputEnabled = true;
 	private _fixedWorldY = 0;
+	private _initialInterRadius = 0;
+	private _initialVisualScale: Vec3 | null = null;
+	private _collectedCount = 0;
+	private _appliedGrowthLevel = 0;
+
+	onLoad() {
+		this._initialInterRadius = this.interRadius;
+		this._initialVisualScale = this.visualRoot?.scale.clone() ?? null;
+		collectorEvents.on(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
+	}
+
+	onDestroy() {
+		collectorEvents.off(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
+	}
 
 	onEnable() {
 		this._fixedWorldY = this.node.worldPosition.y;
@@ -47,6 +79,7 @@ export class Mover extends Component {
 	onDisable() {
 		this._subscribeEvents(false);
 	}
+
 
 	update(dt: number) {
 		if (this._cVelocity.length() > 0) {
@@ -99,8 +132,10 @@ export class Mover extends Component {
 	onJoystickMoveStart() {
 		if (this._isInputEnabled) {
 			this._hasActiveTouch = true;
+			collectorEvents.emit(CollectorEvent.DragStarted);
 		}
 	}
+
 
 	onJoystickMove(cPos: Vec2, delta: Vec2) {
 		if (this._hasActiveTouch && delta.length() > 0) {
@@ -139,5 +174,26 @@ export class Mover extends Component {
 
 	onCameraFocus(setupIdx: number) {
 		this._isCameraUnfocused = setupIdx != 0;
+	}
+
+	private onPhysicalItemCollected() {
+		this._collectedCount += 1;
+		const level = Math.floor(this._collectedCount / Math.max(1, this.growthEvery));
+		if (level <= this._appliedGrowthLevel) return;
+
+		this._appliedGrowthLevel = level;
+		const scale = 1 + level * this.growthStep;
+		if (this.visualRoot && this._initialVisualScale) {
+			this.visualRoot.setScale(
+				this._initialVisualScale.x * scale,
+				this._initialVisualScale.y,
+				this._initialVisualScale.z * scale,
+			);
+		}
+		// The floor component lives on the same Hole node; Inspector assignment is
+		// preferred, while this fallback keeps the physical opening in sync if a
+		// scene is opened before Creator has restored its serialized reference.
+		(this.physicalHoleFloor ?? this.getComponent(PhysicalHoleFloor))?.setHoleScale(scale);
+		this.interRadius = this._initialInterRadius * scale;
 	}
 }

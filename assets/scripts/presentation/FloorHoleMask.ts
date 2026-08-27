@@ -1,4 +1,5 @@
 import { _decorator, Component, Material, MeshRenderer, Node, Vec4 } from 'cc';
+import { PhysicalHoleFloor } from '../gameplay/PhysicalHoleFloor';
 
 const { ccclass, property } = _decorator;
 const holeCenterRadius = new Vec4();
@@ -22,9 +23,14 @@ export class FloorHoleMask extends Component {
   public edgePadding = 0.02;
 
   private _instances: Material[] = [];
+  private _physicalHole: PhysicalHoleFloor | null = null;
+  private _initialPhysicalRadius = 1;
 
   public start(): void {
     if (!this.hole || !this.floorMaskMaterial) return;
+
+    this._physicalHole = this.hole.getComponent(PhysicalHoleFloor);
+    this._initialPhysicalRadius = this._physicalHole?.holeRadius ?? 1;
 
     this.node.getComponentsInChildren(MeshRenderer).forEach((renderer) => {
       // In Creator 3.8.4 MaterialInstance is internal. The renderer is the
@@ -38,7 +44,13 @@ export class FloorHoleMask extends Component {
   public lateUpdate(): void {
     if (!this.hole || this._instances.length === 0) return;
     const position = this.hole.worldPosition;
-    holeCenterRadius.set(position.x, position.y, position.z, this.holeRadius + this.edgePadding);
+    // Hole itself stays at scale 1 so movement and collision bounds do not
+    // inherit presentation scale. The mask must therefore follow the same
+    // physical radius that rebuilds the floor cut-out.
+    const growthScale = this._physicalHole
+      ? this._physicalHole.holeRadius / this._initialPhysicalRadius
+      : this.hole.worldScale.x;
+    holeCenterRadius.set(position.x, position.y, position.z, this.holeRadius * growthScale + this.edgePadding);
     this._instances.forEach((instance) => instance.setProperty('holeCenterRadius', holeCenterRadius));
   }
 }

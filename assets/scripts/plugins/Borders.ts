@@ -1,4 +1,4 @@
-import { _decorator, Component, Intersection2D, v2, Vec2, Vec3 } from 'cc';
+import { _decorator, BoxCollider, Component, Intersection2D, Node, RigidBody, v2, Vec2, Vec3 } from 'cc';
 import { gameEventTarget } from './GameEventTarget';
 import { GameEvent } from '../enums/GameEvent';
 
@@ -12,6 +12,11 @@ type BorderLine = {
 @ccclass('Borders')
 export class Borders extends Component {
 	private _borderLines: BorderLine[] = [];
+	private _playablePolygon: Vec2[] = [];
+	private _physicsWalls: Node[] = [];
+	// Tall enough for the fully physical multi-layer piles. The wall begins at Y=0.
+	private readonly _wallHeight = 8;
+	private readonly _wallThickness = 0.4;
 
 	onEnable() {
 		this.recalculateBorders();
@@ -88,17 +93,60 @@ export class Borders extends Component {
 
 	public recalculateBorders(): void {
 		this._borderLines.length = 0;
+		this._playablePolygon.length = 0;
+		this._collectBorderGroups(this.node);
+		this._rebuildPhysicsWalls();
+	}
 
-		if (this._hasPointChildren(this.node)) {
-			this._addBorderGroup(this.node.children);
+	/** True only inside the closed Fence contour, with clearance from its physical wall. */
+	public containsPlayablePosition(worldPosition: Vec3, clearance = 0): boolean {
+		if (this._playablePolygon.length === 0) this.recalculateBorders();
+		if (this._playablePolygon.length < 3) return true;
+		const point = v2(worldPosition.x, worldPosition.z);
+		let inside = false;
+		for (let index = 0, previous = this._playablePolygon.length - 1; index < this._playablePolygon.length; previous = index++) {
+			const currentPoint = this._playablePolygon[index];
+			const previousPoint = this._playablePolygon[previous];
+			if ((currentPoint.y > point.y) !== (previousPoint.y > point.y)
+				&& point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y) / (previousPoint.y - currentPoint.y) + currentPoint.x) inside = !inside;
+		}
+		if (!inside) return false;
+		for (let index = 0; index < this._playablePolygon.length; index++) {
+			const start = this._playablePolygon[index];
+			const end = this._playablePolygon[(index + 1) % this._playablePolygon.length];
+			if (this._distanceToSegment(point, start, end) < clearance) return false;
+		}
+		return true;
+	}
+
+	private _rebuildPhysicsWalls(): void {
+		this._physicsWalls.forEach(wall => wall.destroy());
+		this._physicsWalls.length = 0;
+		this._borderLines.forEach(line => {
+			const dx = line.endPos.x - line.startPos.x;
+			const dz = line.endPos.y - line.startPos.y;
+			const length = Math.sqrt(dx * dx + dz * dz);
+			if (length <= 0.001) return;
+			const wall = new Node('PhysicsBorder');
+			wall.parent = this.node;
+			wall.setWorldPosition((line.startPos.x + line.endPos.x) * 0.5, this._wallHeight * 0.5, (line.startPos.y + line.endPos.y) * 0.5);
+			wall.setRotationFromEuler(0, -Math.atan2(dz, dx) * 180 / Math.PI, 0);
+			wall.addComponent(RigidBody).type = RigidBody.Type.STATIC;
+			const collider = wall.addComponent(BoxCollider);
+			collider.size = new Vec3(length, this._wallHeight, this._wallThickness);
+			this._physicsWalls.push(wall);
+		});
+	}
+
+	private _collectBorderGroups(node): void {
+		if (!node.active) return;
+
+		if (this._hasPointChildren(node)) {
+			this._addBorderGroup(node.children);
 			return;
 		}
 
-		this.node.children.forEach(child => {
-			if (child.active && this._hasPointChildren(child)) {
-				this._addBorderGroup(child.children);
-			}
-		});
+		node.children.forEach(child => this._collectBorderGroups(child));
 	}
 
 	private _hasPointChildren(node): boolean {
@@ -106,11 +154,39 @@ export class Borders extends Component {
 	}
 
 	private _addBorderGroup(points): void {
+		const worldPoints = points.map(point => v2(point.worldPosition.x, point.worldPosition.z));
 		for (let i = 0; i < points.length - 1; i++) {
 			this._addBorderLine(points[i].worldPosition, points[i + 1].worldPosition);
 		}
 
-		this._addBorderLine(points[points.length - 1].worldPosition, points[0].worldPosition);
+		// A two-point group is an open segment (for example, a gate).
+		// Three or more points form a closed fence loop.
+		if (points.length > 2) {
+			this._addBorderLine(points[points.length - 1].worldPosition, points[0].worldPosition);
+			if (this._polygonArea(worldPoints) > this._polygonArea(this._playablePolygon)) this._playablePolygon = worldPoints;
+		}
+	}
+
+	private _polygonArea(points: Vec2[]): number {
+		let area = 0;
+		for (let index = 0; index < points.length; index++) {
+			const next = points[(index + 1) % points.length];
+			area += points[index].x * next.y - next.x * points[index].y;
+		}
+		return Math.abs(area) * 0.5;
+	}
+
+	private _distanceToSegment(point: Vec2, start: Vec2, end: Vec2): number {
+		const dx = end.x - start.x;
+		const dy = end.y - start.y;
+		const lengthSq = dx * dx + dy * dy;
+		if (lengthSq <= 0.000001) return Vec2.distance(point, start);
+		const progress = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq));
+		const nearestX = start.x + dx * progress;
+		const nearestY = start.y + dy * progress;
+		const distanceX = point.x - nearestX;
+		const distanceY = point.y - nearestY;
+		return Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 	}
 
 	private _addBorderLine(startPos3d: Vec3, endPos3d: Vec3): void {
