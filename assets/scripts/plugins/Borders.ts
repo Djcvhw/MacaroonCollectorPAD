@@ -101,7 +101,10 @@ export class Borders extends Component {
 	/** True only inside the closed Fence contour, with clearance from its physical wall. */
 	public containsPlayablePosition(worldPosition: Vec3, clearance = 0): boolean {
 		if (this._playablePolygon.length === 0) this.recalculateBorders();
-		if (this._playablePolygon.length < 3) return true;
+		if (this._playablePolygon.length < 3) {
+			console.error('[Borders] Playable fence contour is invalid: at least three points are required.');
+			return false;
+		}
 		const point = v2(worldPosition.x, worldPosition.z);
 		let inside = false;
 		for (let index = 0, previous = this._playablePolygon.length - 1; index < this._playablePolygon.length; previous = index++) {

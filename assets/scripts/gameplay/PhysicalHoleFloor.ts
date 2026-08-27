@@ -23,6 +23,7 @@ export class PhysicalHoleFloor extends Component {
   private _captureCollider: CylinderCollider | null = null;
   private _initialHoleRadius = 0;
   private _lastHolePosition = new Vec3(Number.NaN, Number.NaN, Number.NaN);
+  private _holeSurfaceWorldPosition = new Vec3();
 
   public onLoad(): void {
 	this._initialHoleRadius = this.holeRadius;
@@ -81,7 +82,7 @@ export class PhysicalHoleFloor extends Component {
   }
 
   private onBottomTrigger(event: ITriggerEvent): void {
-    event.otherCollider.node.getComponent(CollectibleItem)?.collect();
+    event.otherCollider.node.getComponent(CollectibleItem)?.collect(this.getHoleSurfaceWorldPosition());
   }
 
   private onFunnelTriggerStay(event: ITriggerEvent): void {
@@ -89,7 +90,13 @@ export class PhysicalHoleFloor extends Component {
   }
 
   private onCaptureTriggerEnter(event: ITriggerEvent): void {
-    if (this._bottomNode) event.otherCollider.node.getComponent(CollectibleItem)?.beginAbsorb(this._bottomNode.worldPosition);
+    if (this._bottomNode) event.otherCollider.node.getComponent(CollectibleItem)?.beginAbsorb(this._bottomNode.worldPosition, this.getHoleSurfaceWorldPosition());
+  }
+
+  private getHoleSurfaceWorldPosition(): Vec3 {
+    this._holeSurfaceWorldPosition.set(this.node.worldPosition);
+    this._holeSurfaceWorldPosition.y += this.surfaceLocalY;
+    return this._holeSurfaceWorldPosition;
   }
 
   public setHoleScale(scale: number): void {
@@ -105,9 +112,9 @@ export class PhysicalHoleFloor extends Component {
   }
 
   private createAnnulus(): { positions: number[]; indices: number[] } {
+    const count = Math.max(24, Math.floor(this.segments));
     const positions: number[] = [];
     const indices: number[] = [];
-    const count = Math.max(24, Math.floor(this.segments));
     for (let index = 0; index <= count; index++) {
       const angle = index / count * Math.PI * 2;
       const cos = Math.cos(angle);

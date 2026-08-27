@@ -1,7 +1,7 @@
 // The following code developed originally by juanowen and used under CC0 license 
 // https://github.com/juanowen/cc3-transform-adapter.git
 
-import { _decorator, Component, Enum, UITransform, Size, v2, View, view, size, Node, UIOpacity } from 'cc';
+import { _decorator, Component, Enum, UITransform, Size, v2, View, view, screen, size, Node, UIOpacity, Vec3 } from 'cc';
 import { EDITOR } from 'cc/env';
 const { ccclass, property, requireComponent } = _decorator;
 
@@ -217,8 +217,10 @@ export class TransformAdapter extends Component {
 
 	private _transform: UITransform = null;
 	private _originalSize: Size = null;
-	private _parentSize: Size = null;
+	private _originalPosition: Vec3 = null;
+	private _originalScale: Vec3 = null;
 	private _uiOpacity: UIOpacity = null;
+	private _fullscreenHandler = () => this.onTransformEvent();
 
 	onLoad() {
 		if (this.isInstant && this.hideWhileResize) {
@@ -227,55 +229,70 @@ export class TransformAdapter extends Component {
 		}
 
 		this._fillPrivateProps();
-		this._handleResizeEvents(true);
 	}
 
 	onEnable() {
+		this._handleResizeEvents(true);
 		this.scheduleOnce(() => {
 			this.onTransformEvent();
 		});
+	}
+
+	onDisable() {
+		this._handleResizeEvents(false);
 	}
 
 	_handleResizeEvents(isOn: boolean) {
 		const func = isOn ? 'on' : 'off';
 
 		View.instance[func]('design-resolution-changed', this.onTransformEvent, this);
-		window.addEventListener('fullscreenchange', this.onTransformEvent.bind(this));
+		window[isOn ? 'addEventListener' : 'removeEventListener']('fullscreenchange', this._fullscreenHandler);
 		view[func]('canvas-resize', this.onTransformEvent, this);
 	}
 
 	_getTargetMap(ratio: number): ResizeMap {
 		return this.settings
-			.sort((a, b) => { return b.sizeRatio - a.sizeRatio })
-			.find((map: ResizeMap) => map.sizeRatio < ratio);
+			.slice()
+			.sort((a, b) => b.sizeRatio - a.sizeRatio)
+			.find((map: ResizeMap) => map.sizeRatio <= ratio);
 	}
 
 	_fillPrivateProps() {
 		this._transform = this.getComponent(UITransform);
-		this._originalSize = this._transform.contentSize;
-
-		let parent: Node = this.node.parent;
-		while (parent && !this._parentSize) {
-			const parentTransform: UITransform = parent.getComponent(UITransform);
-			if (parentTransform) {
-				this._parentSize = parentTransform.contentSize;
-			} else {
-				parent = parent.parent;
-			}
-		}
+		this._originalSize = this._transform.contentSize.clone();
+		this._originalPosition = this.node.position.clone();
+		this._originalScale = this.node.scale.clone();
 	}
 
 	onTransformEvent() {
 		const transformFunc = () => {
 			const viewSize: Size = view.getVisibleSize();
-			const parentSize: Size = this._parentSize ? this._parentSize : viewSize.clone();
+			let parentSize: Size = viewSize.clone();
+			let parent: Node = this.node.parent;
+			while (parent) {
+				const parentTransform = parent.getComponent(UITransform);
+				if (parentTransform) {
+					parentSize = parentTransform.contentSize.clone();
+					break;
+				}
+				parent = parent.parent;
+			}
 			const params: SizeParameters = { viewSize, parentSize, selfSize: size(0, 0) };
 
-			const isHorizontal: boolean = viewSize.width > viewSize.height;
-			const sizeRatio: number = Math.max(viewSize.width / viewSize.height, viewSize.height / viewSize.width);
+			const isHorizontal = screen.windowSize.width > screen.windowSize.height;
+			const sizeRatio = Math.max(
+				screen.windowSize.width / screen.windowSize.height,
+				screen.windowSize.height / screen.windowSize.width,
+			);
 
 			const map: ResizeMap = this._getTargetMap(sizeRatio);
 			if (map) {
+				// Every adaptation starts from the authored Inspector transform.
+				// Otherwise a portrait preset remains applied when returning to
+				// landscape (and vice versa).
+				this._transform.setContentSize(this._originalSize);
+				this.node.setPosition(this._originalPosition);
+				this.node.setScale(this._originalScale);
 				const preset: ResizePreset = map[isHorizontal ? 'landscape' : 'portrait'];
 
 				if (preset.resizeMode !== ResizeMode.OriginalSize) {

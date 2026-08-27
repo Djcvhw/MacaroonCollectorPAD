@@ -272,5 +272,19 @@
         "__id__": 2
       }
     ]
+  },
+  {
+    "__type__": "38759X6iRNH06eeF5hEJdss",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "stageIndex": 0,
+    "colliderRadius": 0.49,
+    "colliderHeight": 0.67
   }
 ]

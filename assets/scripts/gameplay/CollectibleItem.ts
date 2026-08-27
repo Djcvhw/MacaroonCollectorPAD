@@ -14,6 +14,7 @@ export class CollectibleItem extends Component {
   private _collectionEnabled = true;
   private _body: RigidBody | null = null;
   private _pullForce = new Vec3();
+  private _holeWorldPosition: Vec3 | null = null;
 
   public get isCollected(): boolean { return this._collected; }
   public onLoad(): void {
@@ -35,17 +36,19 @@ export class CollectibleItem extends Component {
   }
 
   /** Called only by the physical trigger at the bottom of the hole. */
-  public collect(): void {
+  public collect(holeWorldPosition?: Vec3): void {
     if (this._collected || !this._collectionEnabled) return;
     this._collected = true;
     this.node.active = false;
-    collectorEvents.emit(CollectorEvent.PhysicalItemCollected, this);
+    collectorEvents.emit(CollectorEvent.PhysicalItemCollected, this, holeWorldPosition ?? this._holeWorldPosition);
   }
 
   /** Compatibility with existing stage code; collection remains physical. */
-  public beginAbsorb(target: Vec3): void {
+  public beginAbsorb(target: Vec3, holeWorldPosition: Vec3): void {
     if (this._collected || this._absorbing || !this._collectionEnabled || !this._body) return;
     this._absorbing = true;
+    this._holeWorldPosition = holeWorldPosition.clone();
+    collectorEvents.emit(CollectorEvent.MacaroonFallStarted, this);
     this._body.type = RigidBody.Type.KINEMATIC;
     const start = this.node.worldPosition.clone();
     const state = { value: 0 };
@@ -65,6 +68,7 @@ export class CollectibleItem extends Component {
   public reset(): void {
     this._collected = false;
     this._absorbing = false;
+    this._holeWorldPosition = null;
     this.node.active = true;
     if (this._body) this._body.type = RigidBody.Type.DYNAMIC;
     this._body?.wakeUp();

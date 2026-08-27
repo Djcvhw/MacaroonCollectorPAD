@@ -17,22 +17,13 @@ export class CollectorLevelConfig extends Component {
   @property({ type: [CCFloat], tooltip: 'Camera zoom multiplier per stage.' })
   public stageCameraZooms = [1, 1.2, 1.45, 1.75];
 
-  @property
-  public baseHoleRadius = 1;
-
-  @property
-  public holeSmoothFactor = 0.3;
-
-  @property
-  public laneWidth = 12;
-
-  @property({ type: [CCFloat] })
-  public gatePositions = [20, 52, 92, 140];
+  @property public baseHoleRadius = 1;
+  @property public holeSmoothFactor = 0.3;
+  @property public laneWidth = 12;
+  @property({ type: [CCFloat] }) public gatePositions = [20, 52, 92, 140];
 
   public validate(): void {
     const count = this.stageTargets.length;
-    if (count === 0 || this.stageHoleScales.length !== count || this.stageCameraZooms.length !== count) {
-      throw new Error('CollectorLevelConfig stage arrays must have the same non-zero length.');
-    }
+    if (count === 0 || this.stageHoleScales.length !== count || this.stageCameraZooms.length !== count) throw new Error('CollectorLevelConfig stage arrays must have the same non-zero length.');
   }
 }

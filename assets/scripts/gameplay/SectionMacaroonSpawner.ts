@@ -49,10 +49,8 @@ export class SectionMacaroonSpawner extends Component {
   @property public positionJitterY = 0.08;
   @property public scaleJitter = 0.12;
   @property public generateOnLoad = true;
-
   private _generated = false;
   private _borders: Borders | null = null;
-
   public onLoad(): void {
     this._borders = director.getScene()?.getComponentInChildren(Borders) ?? null;
     if (this.generateOnLoad) this.generate();
@@ -69,11 +67,9 @@ export class SectionMacaroonSpawner extends Component {
   public generate(): void {
     if (this._generated || !this.macaroonPrefab || this.itemCount <= 0) return;
     this._generated = true;
-
     const random = new SeededRandom(this.seed >>> 0);
     const usedPerLayer: LayerPoint[][] = [];
     const pointsPerLayer = Math.max(1, Math.floor(this.itemsPerLayer));
-
     for (let index = 0; index < this.itemCount; index++) {
       const layer = Math.floor(index / pointsPerLayer);
       const used = usedPerLayer[layer] ?? (usedPerLayer[layer] = []);
@@ -88,8 +84,8 @@ export class SectionMacaroonSpawner extends Component {
       item.setScale(scale, scale, scale);
 		const collectible = item.getComponent(CollectibleItem) ?? item.addComponent(CollectibleItem);
 		collectible.stageIndex = this.stageIndex;
-		// Until its gate opens, a section cannot lose items to a physics overlap.
-		collectible.setCollectionEnabled(this.stageIndex === 0);
+		// All piles settle immediately; gates only control whether they can be collected.
+      collectible.setCollectionEnabled(this.stageIndex === 0);
     }
   }
 
@@ -128,7 +124,6 @@ export class SectionMacaroonSpawner extends Component {
       })) return candidate;
     }
 	if (fallback) return fallback;
-	// The configured rectangles are inside Fence; this protects against a malformed contour.
 	return { x: centerX, z: centerZ };
   }
 

@@ -1,6 +1,7 @@
-import { _decorator, Camera, Component, CameraComponent, Node, tween, v3, Vec3, view, easing, game } from 'cc';
+import { _decorator, Camera, Component, CameraComponent, Node, tween, v3, Vec3, view, screen, easing, game } from 'cc';
 import { gameEventTarget } from '../GameEventTarget';
 import { GameEvent } from '../../enums/GameEvent';
+import { CollectorEvent, collectorEvents } from '../../core/CollectorEvents';
 
 const { ccclass, property } = _decorator;
 
@@ -40,6 +41,13 @@ export class CameraControllerOrtho extends Component {
 	@property
 	isMain = false;
 
+	/** Plays setup 1 -> setup 0 before input is enabled. */
+	@property
+	playIntro = true;
+
+	@property
+	introDuration = 1.5;
+
 	targetIdx = 0;
 
 	private _cTarget: Node;
@@ -49,6 +57,18 @@ export class CameraControllerOrtho extends Component {
 	private _cPhi: number = 0;
 	private _cShakeAngle: number = 0;
 	private _transitionState: Record<string, number> | null = null;
+
+	private _isLandscape(): boolean {
+		return screen.windowSize.width > screen.windowSize.height;
+	}
+
+	private _getSetupDistance(setup: CameraSetupOrtho): number {
+		// Main Camera is perspective. In portrait, orthoHeightP is used as
+		// the authored camera distance so the existing Inspector field remains
+		// the portrait zoom control. Landscape keeps the regular dist value.
+		return this._isLandscape() ? setup.dist : setup.orthoHeightP;
+	}
+
 
 	onLoad() {
 		// //@ts-ignore
@@ -70,6 +90,19 @@ export class CameraControllerOrtho extends Component {
 	}
 
 	start() {
+		if (this.isMain && this.playIntro && this.cameraSetups.length > 1) {
+			this._cSetupIndex = 1;
+			this.targetIdx = 1;
+			this._applySetup(this.cameraSetups[1]);
+			gameEventTarget.emit(GameEvent.SET_INPUT_ENABLED, false);
+			this.scheduleOnce(() => {
+				this.onCameraTransition(0, this.introDuration, easing.sineInOut, () => {
+					gameEventTarget.emit(GameEvent.SET_INPUT_ENABLED, true);
+					collectorEvents.emit(CollectorEvent.IntroFinished);
+				});
+			}, 0.05);
+			return;
+		}
 		this._updateCurrentParameters();
 		this._positionCamera();
 	}
@@ -114,14 +147,15 @@ export class CameraControllerOrtho extends Component {
 	}
 
 	private _updateCurrentParameters() {
-		const isLand = view.getVisibleSize().width > view.getVisibleSize().height;
+		const isLand = this._isLandscape();
 		const cSetup = this.cameraSetups[this._cSetupIndex];
 
 		this._cTarget = cSetup.target;
-		this._cDist = cSetup.dist;
+		this._cDist = this._getSetupDistance(cSetup);
 		this._cTheta = cSetup.thetaDeg / 180 * Math.PI;
 		this._cPhi = cSetup.phiDeg / 180 * Math.PI;
 		this.getComponent(Camera).orthoHeight = isLand ? cSetup.orthoHeightL : cSetup.orthoHeightP;
+		console.info(`[CameraControllerOrtho] ${isLand ? 'landscape' : 'portrait'} camera distance=${this._cDist}`);
 
 		const targetPos = this._cTarget.worldPosition;
 		this.targetProxy.setWorldPosition(targetPos);
@@ -133,6 +167,7 @@ export class CameraControllerOrtho extends Component {
 		}
 
 		this._updateCurrentParameters();
+		console.info(`[CameraControllerOrtho] ${this._isLandscape() ? 'landscape' : 'portrait'} ${screen.windowSize.width}x${screen.windowSize.height}; setup=${this._cSetupIndex}; orthoHeight=${this.getComponent(Camera).orthoHeight}`);
 	}
 
 	onCameraSetSetupImmediate(setupIndex: number) {
@@ -166,8 +201,8 @@ export class CameraControllerOrtho extends Component {
 		tween(t)
 			.to(time, { value: 1 }, {
 				onUpdate: () => {
-					const isLand = view.getVisibleSize().width > view.getVisibleSize().height;
-					this._cDist = newSetup.dist * t.value + currSetup.dist * (1 - t.value);
+					const isLand = this._isLandscape();
+					this._cDist = this._getSetupDistance(newSetup) * t.value + this._getSetupDistance(currSetup) * (1 - t.value);
 					this._cTheta = (newSetup.thetaDeg * t.value + currSetup.thetaDeg * (1 - t.value)) / 180 * Math.PI;
 					this._cPhi = (newSetup.phiDeg * t.value + currSetup.phiDeg * (1 - t.value)) / 180 * Math.PI;
 
@@ -274,7 +309,7 @@ export class CameraControllerOrtho extends Component {
 	}
 
 	private _applyInterpolatedPose(fromSetup: CameraSetupOrtho, toSetup: CameraSetupOrtho, progress: number) {
-		const isLand = view.getVisibleSize().width > view.getVisibleSize().height;
+		const isLand = this._isLandscape();
 		const targetPosition = Vec3.lerp(v3(), fromSetup.target.worldPosition, toSetup.target.worldPosition, progress);
 		const cameraPosition = Vec3.lerp(v3(), this._getSetupCameraPosition(fromSetup), this._getSetupCameraPosition(toSetup), progress);
 
@@ -290,11 +325,12 @@ export class CameraControllerOrtho extends Component {
 		const targetPosition = setup.target.worldPosition;
 		const theta = setup.thetaDeg / 180 * Math.PI;
 		const phi = setup.phiDeg / 180 * Math.PI;
+		const distance = this._getSetupDistance(setup);
 
 		return v3(
-			targetPosition.x + setup.dist * Math.sin(theta) * Math.sin(phi),
-			targetPosition.y + setup.dist * Math.cos(theta),
-			targetPosition.z + setup.dist * Math.sin(theta) * Math.cos(phi)
+			targetPosition.x + distance * Math.sin(theta) * Math.sin(phi),
+			targetPosition.y + distance * Math.cos(theta),
+			targetPosition.z + distance * Math.sin(theta) * Math.cos(phi)
 		);
 	}
 
@@ -306,12 +342,13 @@ export class CameraControllerOrtho extends Component {
 	}
 
 	private _applySetup(setup: CameraSetupOrtho) {
-		const isLand = view.getVisibleSize().width > view.getVisibleSize().height;
+		const isLand = this._isLandscape();
 		this._cTarget = setup.target;
-		this._cDist = setup.dist;
+		this._cDist = this._getSetupDistance(setup);
 		this._cTheta = setup.thetaDeg / 180 * Math.PI;
 		this._cPhi = setup.phiDeg / 180 * Math.PI;
 		this.getComponent(Camera).orthoHeight = isLand ? setup.orthoHeightL : setup.orthoHeightP;
+		console.info(`[CameraControllerOrtho] ${isLand ? 'landscape' : 'portrait'} camera distance=${this._cDist}`);
 		this.targetProxy.setWorldPosition(setup.target.worldPosition);
 		this._positionCamera();
 	}

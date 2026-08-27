@@ -1,46 +1,33 @@
 import { _decorator, AudioClip, AudioSource, Component, error } from 'cc';
 import { GameEvent } from '../enums/GameEvent';
 import { gameEventTarget } from './GameEventTarget';
+import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 
 const { ccclass, property } = _decorator;
 
 @ccclass('AudioManager')
 export class AudioManager extends Component {
-	@property(AudioClip)
-	private sfxMusic: AudioClip | null = null;
 
 	@property(AudioClip)
-	private sfxBuy: AudioClip | null = null;
+	private collectorMacaroonClip: AudioClip | null = null;
 
 	@property(AudioClip)
-	private sfxCoin: AudioClip | null = null;
+	private collectorGateOpenClip: AudioClip | null = null;
 
 	@property(AudioClip)
-	private sfxCollect: AudioClip | null = null;
+	private collectorGoalUnlockedClip: AudioClip | null = null;
 
 	@property(AudioClip)
-	private sfxCollectMoney: AudioClip | null = null;
+	private collectorSizeUpClip: AudioClip | null = null;
 
 	@property(AudioClip)
-	private sfxConveerLv01: AudioClip | null = null;
+	private collectorWooshClip: AudioClip | null = null;
 
-	@property(AudioClip)
-	private sfxConveerLv02: AudioClip | null = null;
+	@property
+	private collectorMacaroonVolume = 1;
 
-	@property(AudioClip)
-	private sfxFootstep: AudioClip | null = null;
-
-	@property(AudioClip)
-	private sfxPut: AudioClip | null = null;
-
-	@property(AudioClip)
-	private sfxSpendMoney: AudioClip | null = null;
-
-	@property(AudioClip)
-	private sfxSuccessFinal: AudioClip | null = null;
-
-	@property(AudioClip)
-	private sfxUpgrade: AudioClip | null = null;
+	@property
+	private collectorMacaroonThrottleSeconds = 0.1;
 
 	@property
 	private musicVolume = 0.45;
@@ -59,10 +46,8 @@ export class AudioManager extends Component {
 	private _footstepSource: AudioSource | null = null;
 	private _sfxSource: AudioSource | null = null;
 	private _isSoundOn = true;
-	private _isPlayerWalking = false;
-	private _conveyorLevel = 0;
 	private _isGameEnded = false;
-	private _isMusicStarted = false;
+	private _lastMacaroonSoundTime = -Infinity;
 
 	onLoad() {
 		this._musicSource = this._createSource();
@@ -73,6 +58,7 @@ export class AudioManager extends Component {
 
 	onEnable() {
 		this._subscribeEvents(true);
+		this._subscribeCollectorEvents(true);
 	}
 
 	start() {
@@ -83,6 +69,7 @@ export class AudioManager extends Component {
 
 	onDisable() {
 		this._subscribeEvents(false);
+		this._subscribeCollectorEvents(false);
 		this._stopLoops();
 	}
 
@@ -90,8 +77,17 @@ export class AudioManager extends Component {
 		const func = isOn ? 'on' : 'off';
 
 		gameEventTarget[func](GameEvent.TOGGLE_SOUND, this._setSoundEnabled, this);
-		gameEventTarget[func](GameEvent.SCREEN_TOUCH_START, this._onScreenTouchStart, this);
 		gameEventTarget[func](GameEvent.GAME_END, this._onGameEnd, this);
+	}
+
+
+	private _subscribeCollectorEvents(isOn: boolean) {
+		const func = isOn ? 'on' : 'off';
+		collectorEvents[func](CollectorEvent.MacaroonFallStarted, this._onCollectorMacaroonCollected, this);
+		collectorEvents[func](CollectorEvent.GateOpened, this._onCollectorGateOpened, this);
+		collectorEvents[func](CollectorEvent.StageCompleted, this._onCollectorGoalUnlocked, this);
+		collectorEvents[func](CollectorEvent.HoleSizedUp, this._onCollectorSizeUp, this);
+		collectorEvents[func](CollectorEvent.IntroFinished, this._onCollectorIntroFinished, this);
 	}
 
 	private _createSource(): AudioSource {
@@ -109,97 +105,33 @@ export class AudioManager extends Component {
 		this._setSourceVolume(this._sfxSource, 1);
 	}
 
-	private _playMusic() {
-		this._playLoop(this._musicSource, this.sfxMusic, this.musicVolume, 'sfx_music');
-	}
-
-	private _onScreenTouchStart() {
-		if (this._isMusicStarted) {
-			return;
-		}
-
-		this._isMusicStarted = true;
-		this._playMusic();
-	}
-
-	private _onConveerBuy() {
-		this._playOneShot(this.sfxBuy, 'sfx_buy');
-	}
-
-	private _onConveerStart() {
-		this._conveyorLevel = 1;
-		this._playConveyorLoop();
-	}
-
-	private _onConveerUpgradeBuy() {
-		this._conveyorLevel = 2;
-		this._playOneShot(this.sfxUpgrade, 'sfx_upgrade');
-		this._playConveyorLoop();
-	}
-
-	private _onEmployerBuy() {
-		this._playOneShot(this.sfxBuy, 'sfx_buy');
-	}
-
-	private _onNextLevelBuy() {
-		this._playOneShot(this.sfxSuccessFinal, 'sfx_success_final');
-	}
-
 	private _onGameEnd() {
 		this._isGameEnded = true;
 		this._stopGameplaySounds();
 	}
 
-	private _onPlayerCoinSpendToZone() {
-		this._playOneShot(this.sfxSpendMoney, 'sfx_spend_money');
+
+	private _onCollectorMacaroonCollected() {
+		const now = performance.now() / 1000;
+		if (now - this._lastMacaroonSoundTime < this.collectorMacaroonThrottleSeconds) return;
+		this._lastMacaroonSoundTime = now;
+		this._playOneShot(this.collectorMacaroonClip, 'collected_macaroon', this.collectorMacaroonVolume);
 	}
 
-	private _onPlayerWalkStart() {
-		this._isPlayerWalking = true;
-		this._playFootstepLoop();
+	private _onCollectorGateOpened() {
+		this._playOneShot(this.collectorGateOpenClip, 'gate_open');
 	}
 
-	private _onPlayerWalkEnd() {
-		this._isPlayerWalking = false;
-		this._footstepSource?.stop();
+	private _onCollectorGoalUnlocked() {
+		this._playOneShot(this.collectorGoalUnlockedClip, 'goal_unlocked');
 	}
 
-	private _onCollect() {
-		this._playOneShot(this.sfxCollect, 'sfx_collect');
+	private _onCollectorSizeUp() {
+		this._playOneShot(this.collectorSizeUpClip, 'size_up');
 	}
 
-	private _onPut() {
-		this._playOneShot(this.sfxPut, 'sfx_put');
-	}
-
-	private _onBoxSell() {
-		this._playOneShot(this.sfxPut, 'sfx_put');
-	}
-
-	private _onCoinSpawn() {
-		this._playOneShot(this.sfxCoin, 'sfx_coin');
-	}
-
-	private _onCoinCollect() {
-		this._playOneShot(this.sfxCollectMoney, 'sfx_collect_money');
-	}
-
-	private _playConveyorLoop() {
-		if (this._isGameEnded || this._conveyorLevel === 0) {
-			return;
-		}
-
-		const clip = this._conveyorLevel === 2 ? this.sfxConveerLv02 : this.sfxConveerLv01;
-		const clipName = this._conveyorLevel === 2 ? 'sfx_conveer_lv02' : 'sfx_conveer_lv01';
-		this._playLoop(this._conveyorSource, clip, this.conveyorVolume, clipName);
-	}
-
-	private _playFootstepLoop() {
-		if (this._isGameEnded || !this._isPlayerWalking) {
-			return;
-		}
-
-		this._playLoop(this._footstepSource, this.sfxFootstep, this.footstepVolume, 'sfx_footstep');
+	private _onCollectorIntroFinished() {
+		this._playOneShot(this.collectorWooshClip, 'woosh');
 	}
 
 	private _playLoop(source: AudioSource | null, clip: AudioClip | null, volume: number, clipName: string) {
@@ -220,7 +152,7 @@ export class AudioManager extends Component {
 		source.play();
 	}
 
-	private _playOneShot(clip: AudioClip | null, clipName: string) {
+	private _playOneShot(clip: AudioClip | null, clipName: string, volume = this.sfxVolume) {
 		if (this._isGameEnded) {
 			return;
 		}
@@ -235,7 +167,7 @@ export class AudioManager extends Component {
 			return;
 		}
 
-		this._sfxSource.playOneShot(clip, this.sfxVolume);
+		this._sfxSource.playOneShot(clip, volume);
 	}
 
 	private _setSourceVolume(source: AudioSource | null, volume: number) {

@@ -1,6 +1,8 @@
-import { _decorator, Component, Node, tween, Vec3 } from 'cc';
+import { _decorator, Component, Node, tween, v2, Vec2, Vec3 } from 'cc';
 import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 import { Borders } from '../plugins/Borders';
+import { gameEventTarget } from '../plugins/GameEventTarget';
+import { GameEvent } from '../enums/GameEvent';
 
 const { ccclass, property } = _decorator;
 
@@ -17,6 +19,7 @@ export class GateController extends Component {
   private _opened = false;
   private _closedDoorEuler: Vec3[] = [];
 	private _doorPivots: Node[] = [];
+  private _lastBlockedTime = -Infinity;
 
   public onLoad(): void {
     const doors = this.node.children.slice(0, 2);
@@ -34,14 +37,42 @@ export class GateController extends Component {
 
   public onEnable(): void {
     collectorEvents.on(CollectorEvent.StageCompleted, this.onStageCompleted, this);
+    gameEventTarget.on(GameEvent.CORRECT_VELOCITY, this.onCorrectVelocity, this);
   }
 
   public onDisable(): void {
     collectorEvents.off(CollectorEvent.StageCompleted, this.onStageCompleted, this);
+    gameEventTarget.off(GameEvent.CORRECT_VELOCITY, this.onCorrectVelocity, this);
   }
 
   private onStageCompleted(stageIndex: number): void {
     if (stageIndex === this.stageIndex) this.open();
+  }
+
+  private onCorrectVelocity(position: Vec3, radius: number, velocity: Vec3): void {
+    if (this._opened || !this.borderPoints || this.borderPoints.children.length < 2) return;
+    const start = this.borderPoints.children[0].worldPosition;
+    const end = this.borderPoints.children[1].worldPosition;
+    const current = v2(position.x, position.z);
+    const next = v2(position.x + velocity.x, position.z + velocity.z);
+    const distanceBefore = this.distanceToSegment(current, v2(start.x, start.z), v2(end.x, end.z));
+    const distanceAfter = this.distanceToSegment(next, v2(start.x, start.z), v2(end.x, end.z));
+    // Borders stop the centre just outside `radius`, so accept a tiny margin
+    // and report the attempted approach rather than waiting for penetration.
+    if (distanceAfter > radius + 0.12 || distanceAfter >= distanceBefore) return;
+
+    const now = performance.now();
+    if (now - this._lastBlockedTime < 500) return;
+    this._lastBlockedTime = now;
+    collectorEvents.emit(CollectorEvent.GateBlocked, this.stageIndex);
+  }
+
+  private distanceToSegment(point: Vec2, start: Vec2, end: Vec2): number {
+    const delta = Vec2.subtract(v2(), end, start);
+    const lengthSquared = delta.lengthSqr();
+    if (lengthSquared <= 0.000001) return Vec2.distance(point, start);
+    const progress = Math.max(0, Math.min(1, Vec2.dot(Vec2.subtract(v2(), point, start), delta) / lengthSquared));
+    return Vec2.distance(point, Vec2.add(v2(), start, Vec2.multiplyScalar(v2(), delta, progress)));
   }
 
   public open(): void {
@@ -49,7 +80,7 @@ export class GateController extends Component {
     this._opened = true;
     this.borderPoints && (this.borderPoints.active = false);
     this.borders?.recalculateBorders();
-    collectorEvents.emit(CollectorEvent.GateOpened, this.node.name);
+    collectorEvents.emit(CollectorEvent.GateOpened, this.stageIndex);
     this.animateOpen();
   }
 
