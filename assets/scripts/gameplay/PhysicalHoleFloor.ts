@@ -12,8 +12,8 @@ export class PhysicalHoleFloor extends Component {
   @property public holeRadius = 1;
   @property public floorRadius = 512;
   @property public segments = 64;
-  /** Hole is authored at Y=-1.4 while the visible floor surface is Y=0. */
-  @property public surfaceLocalY = 1.4;
+  /** Hole is authored at Y=-1.4 while the visible floor surface is Y=0.2. */
+  @property public surfaceLocalY = 1.6;
   @property public bottomDepth = 2.7;
   @property public bottomRadiusFactor = 1.2;
   /** Insets the capture trigger so contact starts when the macaroon centre crosses the rim. */

@@ -3835,12 +3835,6 @@
       }
     ],
     "durationSeconds": 90,
-    "stageTargets": [
-      150,
-      250,
-      300,
-      400
-    ],
     "_id": ""
   },
   {

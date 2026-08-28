@@ -13,6 +13,7 @@ export enum CollectorEvent {
   GateBlocked = 'collector:gate-blocked',
   HoleSizedUp = 'collector:hole-sized-up',
   HolePositionRequested = 'collector:hole-position-requested',
+  StageTargetsRequested = 'collector:stage-targets-requested',
   TimerChanged = 'collector:timer-changed',
   GameFinished = 'collector:game-finished',
 }

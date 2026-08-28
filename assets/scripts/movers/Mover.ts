@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, v3, Vec2, Vec3, CameraComponent } from 'cc';
+import { _decorator, Component, Node, ParticleSystem, v3, Vec2, Vec3, CameraComponent } from 'cc';
 import { gameEventTarget } from '../plugins/GameEventTarget';
 import { GameEvent } from '../enums/GameEvent';
 import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
@@ -28,6 +28,10 @@ export class Mover extends Component {
 	@property(PhysicalHoleFloor)
 	physicalHoleFloor: PhysicalHoleFloor | null = null;
 
+	/** Assign the pre-authored ParticleSystem on Hole/VisualRoot/SizeUpParticles. */
+	@property(ParticleSystem)
+	sizeUpParticles: ParticleSystem | null = null;
+
 	/** Keep this enabled for ground-bound objects such as the collector hole. */
 	@property
 	lockWorldY: boolean = false;
@@ -56,11 +60,13 @@ export class Mover extends Component {
 		this._initialVisualScale = this.visualRoot.scale.clone();
 		collectorEvents.on(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
 		collectorEvents.on(CollectorEvent.HolePositionRequested, this.onHolePositionRequested, this);
+		collectorEvents.on(CollectorEvent.HoleSizedUp, this.playSizeUpParticles, this);
 	}
 
 	onDestroy() {
 		collectorEvents.off(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
 		collectorEvents.off(CollectorEvent.HolePositionRequested, this.onHolePositionRequested, this);
+		collectorEvents.off(CollectorEvent.HoleSizedUp, this.playSizeUpParticles, this);
 	}
 
 	onEnable() {
@@ -176,5 +182,14 @@ export class Mover extends Component {
 			return;
 		}
 		callback(this.visualRoot.worldPosition.clone());
+	}
+
+	private playSizeUpParticles(): void {
+		if (!this.sizeUpParticles) {
+			console.error('[Mover] Size Up Particles is not assigned in Inspector.');
+			return;
+		}
+		this.sizeUpParticles.clear();
+		this.sizeUpParticles.play();
 	}
 }

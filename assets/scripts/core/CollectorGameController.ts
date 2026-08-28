@@ -26,8 +26,8 @@ export class CollectorGameController extends Component {
     if (!this.config || !this.hole || !this.stages) {
       throw new Error('CollectorGameController requires Config, Hole, and Stages Inspector references.');
     }
-    this.config.validate();
     this.stages.initialize(this.config, this.hole);
+    this.config.validate(this.stages.stageCount);
     this.hole.setInputEnabled(true);
     this.hole.node.on(CollectorEvent.DragStarted, this.beginGame, this);
     collectorEvents.on(CollectorEvent.StageCompleted, this.tryFinishAfterStage, this);
@@ -72,7 +72,7 @@ export class CollectorGameController extends Component {
   }
 
   private tryFinishAfterStage(stageIndex: number): void {
-    if (this.config && stageIndex === this.config.stageTargets.length - 1) this.finish(true);
+    if (this.stages && stageIndex === this.stages.stageCount - 1) this.finish(true);
   }
 
   private setState(next: CollectorGameState): void {

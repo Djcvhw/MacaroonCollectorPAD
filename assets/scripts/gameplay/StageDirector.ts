@@ -19,6 +19,8 @@ export class StageDirector extends Component {
   private _collected = 0;
   private _items: CollectibleItem[][] = [];
 
+  public get stageCount(): number { return this._items.length; }
+
   public initialize(config: CollectorLevelConfig, hole: HoleController): void {
     collectorEvents.off(CollectorEvent.PhysicalItemCollected, this.onPhysicalItemCollected, this);
     this._config = config;
@@ -50,8 +52,9 @@ export class StageDirector extends Component {
   private onPhysicalItemCollected(item: CollectibleItem): void {
     if (!this._config || item.stageIndex !== this._stageIndex) return;
     this._collected++;
-    collectorEvents.emit(CollectorEvent.ItemCollected, this._stageIndex, this._collected, this._config.stageTargets[this._stageIndex]);
-    if (this._collected >= this._config.stageTargets[this._stageIndex]) this.completeStage();
+    const target = this._items[this._stageIndex].length;
+    collectorEvents.emit(CollectorEvent.ItemCollected, this._stageIndex, this._collected, target);
+    if (this._collected >= target) this.completeStage();
   }
 
   private completeStage(): void {
@@ -63,7 +66,7 @@ export class StageDirector extends Component {
     this._stageIndex++;
     this._collected = 0;
     this.updateCollectionEligibility();
-    if (this._stageIndex >= this._config.stageTargets.length) return;
+    if (this._stageIndex >= this._items.length) return;
   }
 
   private updateCollectionEligibility(): void {

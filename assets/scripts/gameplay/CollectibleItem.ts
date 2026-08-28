@@ -1,4 +1,4 @@
-import { _decorator, Component, PhysicsMaterial, RigidBody, SphereCollider, tween, Vec3 } from 'cc';
+import { _decorator, BoxCollider, Component, PhysicsMaterial, RigidBody, tween, Vec3 } from 'cc';
 import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 
 const { ccclass, property } = _decorator;
@@ -7,18 +7,20 @@ const { ccclass, property } = _decorator;
 export class CollectibleItem extends Component {
   private static _sharedPhysicsMaterial: PhysicsMaterial | null = null;
   @property public stageIndex = 0;
-  /** The reference uses one cheap sphere for every macaroon. */
-  @property public colliderRadius = 0.28;
+  /** One cheap primitive matching the rendered macaroon footprint. */
+  @property(Vec3) public colliderSize = new Vec3(0.82, 0.55, 0.82);
   @property public absorbDuration = 0.32;
   @property({ tooltip: 'How far below the floor the visual falls before collection.' })
   public absorbDropDepth = 2.35;
   @property public absorbSideOffset = 0.12;
   @property public absorbSpinDegrees = 260;
+  @property({ tooltip: 'Part of absorption spent moving inward before the downward fall.' })
+  public entryPhase = 0.3;
   private _collected = false;
   private _absorbing = false;
   private _collectionEnabled = true;
   private _body: RigidBody | null = null;
-  private _collider: SphereCollider | null = null;
+  private _collider: BoxCollider | null = null;
   private _holeWorldPosition: Vec3 | null = null;
   private _physicsSimulationRequested = true;
 
@@ -36,16 +38,16 @@ export class CollectibleItem extends Component {
     // detection adds a large per-body cost here and is unnecessary once the
     // hole capture switches the body to the scripted kinematic arc.
     this._body.useCCD = false;
-    this._body.sleepThreshold = 0.25;
+    this._body.sleepThreshold = 0.1;
     this._body.linearDamping = 0.12;
     this._body.angularDamping = 0.99;
 
-    const collider = this.getComponent(SphereCollider) ?? this.addComponent(SphereCollider);
+    const collider = this.getComponent(BoxCollider) ?? this.addComponent(BoxCollider);
     this._collider = collider;
-    collider.radius = this.colliderRadius;
+    collider.size = this.colliderSize;
     if (!CollectibleItem._sharedPhysicsMaterial) {
       CollectibleItem._sharedPhysicsMaterial = new PhysicsMaterial();
-      CollectibleItem._sharedPhysicsMaterial.friction = 0.55;
+      CollectibleItem._sharedPhysicsMaterial.friction = 0.35;
       CollectibleItem._sharedPhysicsMaterial.restitution = 0;
     }
     collider.sharedMaterial = CollectibleItem._sharedPhysicsMaterial;
@@ -90,25 +92,27 @@ export class CollectibleItem extends Component {
       onUpdate: () => {
         if (!this.requestHolePosition() || !this._holeWorldPosition) return;
         const t = state.value;
-        const oneMinusT = 1 - t;
         const currentTarget = this._holeWorldPosition;
-        const inwardT = 1 - oneMinusT * oneMinusT;
-        const velocityInfluence = this.absorbDuration * t * oneMinusT * 0.32;
+        const entryPhase = Math.max(0.05, Math.min(0.6, this.entryPhase));
+        const entryRaw = Math.max(0, Math.min(1, t / entryPhase));
+        const entryT = entryRaw * entryRaw * (3 - 2 * entryRaw);
+        const fallRaw = Math.max(0, Math.min(1, (t - entryPhase) / Math.max(0.01, 1 - entryPhase)));
+        const fallT = fallRaw * fallRaw;
+        const verticalVelocityInfluence = this.absorbDuration * fallRaw * (1 - fallRaw) * 0.12;
         const inward = Vec3.subtract(new Vec3(), currentTarget, start);
         inward.y = 0;
         if (inward.lengthSqr() > 0.0001) inward.normalize();
-        const sideCurve = Math.sin(Math.PI * t) * this.absorbSideOffset * sideSign;
+        const sideCurve = Math.sin(Math.PI * fallRaw) * this.absorbSideOffset * sideSign;
         const targetY = currentTarget.y - this.absorbDropDepth;
-        const fallT = t * t;
         this.node.setWorldPosition(
-          start.x + (currentTarget.x - start.x) * inwardT + initialVelocity.x * velocityInfluence - inward.z * sideCurve,
-          start.y + (targetY - start.y) * fallT + initialVelocity.y * velocityInfluence,
-          start.z + (currentTarget.z - start.z) * inwardT + initialVelocity.z * velocityInfluence + inward.x * sideCurve,
+          start.x + (currentTarget.x - start.x) * entryT - inward.z * sideCurve,
+          start.y + (targetY - start.y) * fallT + initialVelocity.y * verticalVelocityInfluence,
+          start.z + (currentTarget.z - start.z) * entryT + inward.x * sideCurve,
         );
         this.node.setRotationFromEuler(
-          startEuler.x + spinX * t,
-          startEuler.y + spinY * t,
-          startEuler.z + spinZ * t,
+          startEuler.x + spinX * fallRaw,
+          startEuler.y + spinY * fallRaw,
+          startEuler.z + spinZ * fallRaw,
         );
       },
     }).call(() => this.collect(this._holeWorldPosition ?? undefined)).start();
@@ -165,4 +169,5 @@ export class CollectibleItem extends Component {
     });
     return received;
   }
+
 }

@@ -1,4 +1,4 @@
-import { _decorator, CameraComponent, CCInteger, Color, Component, Graphics, Label, Node, Rect, screen, Size, Sprite, SpriteFrame, Texture2D, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
+import { _decorator, CameraComponent, CCInteger, Color, Component, Label, Node, Rect, screen, Size, Sprite, SpriteFrame, Texture2D, tween, UIOpacity, UITransform, v3, Vec3 } from 'cc';
 import { CollectorEvent, collectorEvents } from '../core/CollectorEvents';
 import { gameEventTarget } from '../plugins/GameEventTarget';
 import { GameEvent } from '../enums/GameEvent';
@@ -48,9 +48,7 @@ export class CollectorHudView extends Component {
   @property public redXPortraitYRatio = 0.04;
   @property public confettiPortraitScaleMultiplier = 2.5;
   @property({ type: CCInteger }) public confettiParticleCount = 42;
-  @property({ type: CCInteger }) public sizeUpYellowParticleCount = 24;
   @property public durationSeconds = 90;
-  @property({ type: [CCInteger] }) public stageTargets = [150, 250, 300, 400];
   private _remaining: number[] = [];
   private _completed: boolean[] = [];
   private _timerStarted = false;
@@ -68,8 +66,6 @@ export class CollectorHudView extends Component {
   private _lastFeedbackWorldPosition: Vec3 | null = null;
 
   public onLoad(): void {
-    this._remaining = this.stageTargets.slice();
-    this._completed = this.stageTargets.map(() => false);
     this._seconds = this.durationSeconds;
     if (!this.timerLabel) console.error('[CollectorHudView] Timer Label is not assigned in Inspector.');
     else this._normalTimerColor = this.timerLabel.color.clone();
@@ -85,6 +81,15 @@ export class CollectorHudView extends Component {
       this.tutorialRoot.active = false;
     }
     this.renderTimer();
+  }
+
+  public start(): void {
+    let targets: number[] | null = null;
+    collectorEvents.emit(CollectorEvent.StageTargetsRequested, (providedTargets: number[]) => { targets = providedTargets; });
+    if (!targets || targets.length === 0) throw new Error('[CollectorHudView] No MacaroonSpawner provided section targets.');
+    if (this.targetLabels.length !== targets.length) throw new Error('[CollectorHudView] Target Labels count must match MacaroonSpawner section count.');
+    this._remaining = targets.slice();
+    this._completed = targets.map(() => false);
     this.renderCounters();
   }
 
@@ -269,7 +274,6 @@ export class CollectorHudView extends Component {
     console.info(`[CollectorHudView] HoleSizedUp received; scale=${_scale ?? 'not provided'}`);
     if (worldPosition) this._lastFeedbackWorldPosition = worldPosition.clone();
     this.showTitle('size-up');
-    this.spawnSizeUpParticles();
   }
   private onGateBlocked(): void { this.showRedX(); }
 
@@ -496,56 +500,6 @@ export class CollectorHudView extends Component {
         .call(() => piece.destroy())
         .start();
       tween(opacity).delay(0.35).to(0.32, { opacity: 0 }).start();
-    }
-  }
-
-  private spawnSizeUpParticles(): void {
-    if (!this.popupParent) {
-      console.error('[CollectorHudView] Cannot emit size-up particles: Popup Parent is not assigned in Inspector.');
-      return;
-    }
-    const origin = this.getFeedbackPosition();
-    if (!origin) return;
-    const portraitMultiplier = screen.windowSize.height > screen.windowSize.width
-      ? this.confettiPortraitScaleMultiplier
-      : 1;
-    const count = Math.max(1, this.sizeUpYellowParticleCount);
-    for (let index = 0; index < count; index += 1) {
-      const particle = new Node();
-      particle.parent = this.popupParent;
-      particle.layer = this.popupParent.layer;
-      particle.setPosition(origin);
-      particle.setRotationFromEuler(0, 0, Math.random() * 360);
-      const particleSize = 12 + Math.random() * 8;
-      particle.addComponent(UITransform).setContentSize(particleSize, particleSize);
-      const graphics = particle.addComponent(Graphics);
-      graphics.fillColor = index % 2 === 0
-        ? new Color(255, 238, 0, 255)
-        : new Color(255, 190, 0, 255);
-      graphics.circle(0, 0, particleSize * 0.5);
-      graphics.fill();
-      const opacity = particle.addComponent(UIOpacity);
-      opacity.opacity = 255;
-
-      const particleScale = (0.9 + Math.random() * 0.65) * portraitMultiplier;
-      particle.setScale(particleScale, particleScale, 1);
-      const angle = index / count * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-      const distance = (100 + Math.random() * 190) * portraitMultiplier;
-      const destination = v3(
-        origin.x + Math.cos(angle) * distance,
-        origin.y + Math.sin(angle) * distance,
-        0,
-      );
-      particle.setSiblingIndex(this.popupParent.children.length - 1);
-      tween(particle)
-        .to(0.48 + Math.random() * 0.22, {
-          position: destination,
-          angle: particle.angle + 300 + Math.random() * 300,
-          scale: v3(particleScale * 0.35, particleScale * 0.35, 1),
-        }, { easing: 'quadOut' })
-        .call(() => particle.destroy())
-        .start();
-      tween(opacity).delay(0.2).to(0.35, { opacity: 0 }).start();
     }
   }
 
